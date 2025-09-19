@@ -11,8 +11,8 @@ jobs:
 
       - name: Creer fichier .env
         run: |
-          echo "MYSQL_HOST=mysql" >> .env
-          echo "MONGODB_HOST=mongo" >> .env
+          echo "MYSQL_HOST=localhost" >> .env
+          echo "MONGODB_HOST=localhost" >> .env
           echo "MYSQL_DB_NAME=mydb" >> .env
           echo "DB_USERNAME=user" >> .env
           echo "DB_PASSWORD=pass" >> .env
@@ -35,4 +35,4 @@ jobs:
           done
 
       - name: Exécuter les tests
-        run: docker compose exec -T store_manager_app sh -c "PYTHONPATH=/app/src python -m pytest"
+        run: cd src && PYTHONPATH=/app/src python3 -m pytest
