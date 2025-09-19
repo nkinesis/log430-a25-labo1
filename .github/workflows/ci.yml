@@ -11,8 +11,9 @@ jobs:
 
       - name: Creer fichier .env
         run: |
-          echo "DB_HOST=localhost" >> .env
-          echo "DB_NAME=mydb" >> .env
+          echo "MYSQL_HOST=mysql" >> .env
+          echo "MONGODB_HOST=mongo" >> .env
+          echo "MYSQL_DB_NAME=mydb" >> .env
           echo "DB_USERNAME=user" >> .env
           echo "DB_PASSWORD=pass" >> .env
 
