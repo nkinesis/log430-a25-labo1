@@ -11,7 +11,12 @@ from models.user import User
 class UserDAO:
     def __init__(self):
         try:
-            env_path = "../.env"
+            env_paths = [".env", "../.env", "../../.env"]
+            env_path = None
+            for path in env_paths:
+                if os.path.exists(path):
+                    env_path = path
+                    break
             print(os.path.abspath(env_path))
             load_dotenv(dotenv_path=env_path)
             db_host = os.getenv("MYSQL_HOST")
