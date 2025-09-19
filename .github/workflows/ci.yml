@@ -35,4 +35,4 @@ jobs:
           done
 
       - name: Exécuter les tests
-        run: cd src && PYTHONPATH=/app/src python3 -m pytest
+        run: cd src && python3 -m pytest
