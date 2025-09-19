@@ -34,10 +34,5 @@ jobs:
           done
 
       - name: Exécuter les tests
-        run: |
-          docker compose exec -T -e PYTHONPATH=/app/src store_manager_app \
-            pytest tests/test_user.py
-
-      - name: Exécuter les tests
         run: docker compose exec -T -e PYTHONPATH=/app/src store_manager_app \
           pytest
