@@ -35,5 +35,5 @@ jobs:
 
       - name: Exécuter les tests
         working-directory: src
-        run: docker compose exec -T store_manager_app pytest tests/test_user.py
+        run: docker compose exec -T store_manager_app pytest src/tests/test_user.py
 
