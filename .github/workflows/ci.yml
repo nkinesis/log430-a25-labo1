@@ -33,6 +33,6 @@ jobs:
             sleep 2
           done
 
-      - name: Exécuter les test
+      - name: Exécuter les tests
         run: docker compose exec -T store_manager_app pytest
 

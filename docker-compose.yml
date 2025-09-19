@@ -1,6 +1,7 @@
 services:
   store_manager_app:
     build: .
+    container_name: store_manager_app
     volumes:
       - .:/app
     depends_on:
@@ -11,6 +12,7 @@ services:
 
   mysql:
     image: mysql:8
+    container_name: mysql
     restart: unless-stopped
     ports:
       - "3306:3306"
@@ -24,6 +26,7 @@ services:
 
   mongo:
     image: mongo:6
+    container_name: mongo
     restart: unless-stopped
     ports:
       - "27017:27017"
