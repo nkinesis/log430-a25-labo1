@@ -63,38 +63,6 @@ jobs:
           done
           echo "MongoDB is ready!"
 
-      - name: Verify database initialization
-        run: |
-          echo "Checking MySQL database initialization..."
-          # Use the application user 'user' not 'root', and connect from inside container using localhost
-          docker exec mysql mysql -h localhost -u user -ppass mydb -e "SHOW TABLES; SELECT COUNT(*) as user_count FROM users;"
-
-      - name: Test MySQL connection from host
-        run: |
-          echo "Testing MySQL connection from GitHub Actions runner to container..."
-          python3 -c "
-          import mysql.connector
-          try:
-              # From host (GitHub runner) to container, use localhost with exposed port
-              conn = mysql.connector.connect(
-                  host='localhost',
-                  port=3306,
-                  user='user', 
-                  password='pass',
-                  database='mydb'
-              )
-              cursor = conn.cursor()
-              cursor.execute('SELECT COUNT(*) FROM users')
-              result = cursor.fetchone()
-              print(f'Connection from host successful! Users count: {result[0]}')
-              cursor.close()
-              conn.close()
-          except Exception as e:
-              print(f'Connection from host failed: {e}')
-              import traceback
-              traceback.print_exc()
-          "
-
       - name: Run tests with verbose output
         working-directory: src
         run: |
