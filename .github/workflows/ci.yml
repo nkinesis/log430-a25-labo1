@@ -9,10 +9,23 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Start containers
+      - name: Creer fichier .env
+        run: |
+          echo "DB_HOST=localhost" >> .env
+          echo "DB_NAME=mydb" >> .env
+          echo "DB_USERNAME=user" >> .env
+          echo "DB_PASSWORD=pass" >> .env
+
+      - name: Installer les dépendances
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest
+
+      - name: Créer le conteneur
         run: docker compose up -d
 
-      - name: Wait for MySQL
+      - name: Attendre MySQL
         run: |
           until docker exec mysql \
             mysqladmin ping -h "localhost" -u root -proot --silent; do
@@ -20,5 +33,6 @@ jobs:
             sleep 2
           done
 
-      - name: Run tests
+      - name: Exécuter les test
         run: docker compose exec -T store_manager_app pytest
+
