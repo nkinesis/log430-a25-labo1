@@ -9,40 +9,116 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Create .env file for Docker
+      - name: Create .env file
         run: |
-          echo "MYSQL_HOST=mysql" >> .env
-          echo "MONGODB_HOST=mongo" >> .env
+          echo "MYSQL_HOST=localhost" >> .env
+          echo "MONGODB_HOST=localhost" >> .env
           echo "MYSQL_DB_NAME=mydb" >> .env
           echo "DB_USERNAME=user" >> .env
           echo "DB_PASSWORD=pass" >> .env
+          echo "Created .env file:"
+          cat .env
 
-      - name: Build and start services
-        run: docker compose up -d --build
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest
+
+      - name: Start Docker services
+        run: docker compose up -d
 
       - name: Wait for MySQL to be ready
         run: |
-          until docker exec mysql \
-            mysqladmin ping -h "localhost" -u root -proot --silent; do
-            echo "Waiting for MySQL..."
+          echo "Waiting for MySQL service..."
+          timeout=60
+          elapsed=0
+          until docker exec mysql mysqladmin ping -h "localhost" -u root -proot --silent; do
+            if [ $elapsed -ge $timeout ]; then
+              echo "MySQL failed to start within $timeout seconds"
+              docker logs mysql
+              exit 1
+            fi
+            echo "MySQL not ready yet... (${elapsed}s/${timeout}s)"
             sleep 2
+            elapsed=$((elapsed + 2))
           done
+          echo "MySQL is ready!"
 
       - name: Wait for MongoDB to be ready
         run: |
-          until docker exec mongo \
-            mongosh --eval "db.adminCommand('ping')" --quiet; do
-            echo "Waiting for MongoDB..."
+          echo "Waiting for MongoDB service..."
+          timeout=60
+          elapsed=0
+          until docker exec mongo mongosh --eval "db.adminCommand('ping')" --quiet; do
+            if [ $elapsed -ge $timeout ]; then
+              echo "MongoDB failed to start within $timeout seconds"
+              docker logs mongo
+              exit 1
+            fi
+            echo "MongoDB not ready yet... (${elapsed}s/${timeout}s)"
             sleep 2
+            elapsed=$((elapsed + 2))
           done
+          echo "MongoDB is ready!"
 
-      - name: Install test dependencies in container
+      - name: Verify database initialization
         run: |
-          docker exec store_manager_app pip install pytest
+          echo "Checking MySQL database initialization..."
+          docker exec mysql mysql -u root -proot -e "USE mydb; SHOW TABLES; SELECT COUNT(*) as user_count FROM users;"
 
-      - name: Run tests inside container
+      - name: Debug connection from host
+        working-directory: src
         run: |
-          docker exec store_manager_app bash -c "cd src && python3 -m pytest -v"
+          echo "Testing database connection from host..."
+          python3 -c "
+          import os
+          from dotenv import load_dotenv
+          load_dotenv('../.env')
+          print('Environment variables:')
+          print(f'MYSQL_HOST: {os.getenv(\"MYSQL_HOST\")}')
+          print(f'MYSQL_DB_NAME: {os.getenv(\"MYSQL_DB_NAME\")}')
+          print(f'DB_USERNAME: {os.getenv(\"DB_USERNAME\")}')
+          print(f'DB_PASSWORD: {\"*\" * len(os.getenv(\"DB_PASSWORD\", \"\"))}')
+          "
+
+      - name: Test MySQL connection directly
+        run: |
+          echo "Testing direct MySQL connection..."
+          python3 -c "
+          import mysql.connector
+          try:
+              conn = mysql.connector.connect(
+                  host='localhost',
+                  user='user', 
+                  password='pass',
+                  database='mydb'
+              )
+              cursor = conn.cursor()
+              cursor.execute('SELECT COUNT(*) FROM users')
+              result = cursor.fetchone()
+              print(f'Direct connection successful! Users count: {result[0]}')
+              cursor.close()
+              conn.close()
+          except Exception as e:
+              print(f'Direct connection failed: {e}')
+          "
+
+      - name: Run tests with verbose output
+        working-directory: src
+        run: |
+          echo "Running tests..."
+          python3 -m pytest -v -s --tb=long
+
+      - name: Show logs on failure
+        if: failure()
+        run: |
+          echo "=== Docker Compose Logs ==="
+          docker compose logs
+          echo "=== MySQL Logs ==="
+          docker logs mysql
+          echo "=== MongoDB Logs ==="
+          docker logs mongo
 
       - name: Cleanup
         if: always()
