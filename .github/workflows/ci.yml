@@ -68,7 +68,7 @@ jobs:
           
           # Deploy via SSH
           ssh -i ~/.ssh/id_rsa ${{ secrets.SSH_USER }}@${{ secrets.SSH_SERVER_HOST }} << 'EOF'
-            cd log430-a25-labo0
+            cd log430-a25-labo1
             git pull origin main
           EOF
 
