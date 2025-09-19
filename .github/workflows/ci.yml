@@ -33,6 +33,7 @@ jobs:
           echo "Waiting for MySQL service..."
           timeout=60
           elapsed=0
+          # Connect as root from INSIDE the container using localhost
           until docker exec mysql mysqladmin ping -h "localhost" -u root -proot --silent; do
             if [ $elapsed -ge $timeout ]; then
               echo "MySQL failed to start within $timeout seconds"
@@ -65,31 +66,19 @@ jobs:
       - name: Verify database initialization
         run: |
           echo "Checking MySQL database initialization..."
-          docker exec mysql mysql -u root -proot -e "USE mydb; SHOW TABLES; SELECT COUNT(*) as user_count FROM users;"
+          # Use the application user 'user' not 'root', and connect from inside container using localhost
+          docker exec mysql mysql -h localhost -u user -ppass mydb -e "SHOW TABLES; SELECT COUNT(*) as user_count FROM users;"
 
-      - name: Debug connection from host
-        working-directory: src
+      - name: Test MySQL connection from host
         run: |
-          echo "Testing database connection from host..."
-          python3 -c "
-          import os
-          from dotenv import load_dotenv
-          load_dotenv('../.env')
-          print('Environment variables:')
-          print(f'MYSQL_HOST: {os.getenv(\"MYSQL_HOST\")}')
-          print(f'MYSQL_DB_NAME: {os.getenv(\"MYSQL_DB_NAME\")}')
-          print(f'DB_USERNAME: {os.getenv(\"DB_USERNAME\")}')
-          print(f'DB_PASSWORD: {\"*\" * len(os.getenv(\"DB_PASSWORD\", \"\"))}')
-          "
-
-      - name: Test MySQL connection directly
-        run: |
-          echo "Testing direct MySQL connection..."
+          echo "Testing MySQL connection from GitHub Actions runner to container..."
           python3 -c "
           import mysql.connector
           try:
+              # From host (GitHub runner) to container, use localhost with exposed port
               conn = mysql.connector.connect(
                   host='localhost',
+                  port=3306,
                   user='user', 
                   password='pass',
                   database='mydb'
@@ -97,11 +86,13 @@ jobs:
               cursor = conn.cursor()
               cursor.execute('SELECT COUNT(*) FROM users')
               result = cursor.fetchone()
-              print(f'Direct connection successful! Users count: {result[0]}')
+              print(f'Connection from host successful! Users count: {result[0]}')
               cursor.close()
               conn.close()
           except Exception as e:
-              print(f'Direct connection failed: {e}')
+              print(f'Connection from host failed: {e}')
+              import traceback
+              traceback.print_exc()
           "
 
       - name: Run tests with verbose output
