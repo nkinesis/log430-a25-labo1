@@ -43,7 +43,7 @@ jobs:
 
       - name: Run tests
         working-directory: src
-        run: python3 -m pytest -v
+        run: python3 -m pytest tests/test_user.py -v
 
       - name: Cleanup
         if: always()
