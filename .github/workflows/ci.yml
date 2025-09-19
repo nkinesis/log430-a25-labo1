@@ -16,8 +16,6 @@ jobs:
           echo "MYSQL_DB_NAME=mydb" >> .env
           echo "DB_USERNAME=user" >> .env
           echo "DB_PASSWORD=pass" >> .env
-          echo "Created .env file:"
-          cat .env
 
       - name: Install Python dependencies
         run: |
@@ -28,40 +26,65 @@ jobs:
       - name: Start Docker services
         run: docker compose up -d
 
-      - name: Wait for MySQL to be ready
+      - name: Wait longer for MySQL to be fully ready
         run: |
-          echo "Waiting for MySQL service..."
-          timeout=60
+          echo "Waiting for MySQL to be fully initialized..."
+          sleep 10
+          
+          # Wait for MySQL to accept connections
+          timeout=120
           elapsed=0
-          # Connect as root from INSIDE the container using localhost
-          until docker exec mysql mysqladmin ping -h "localhost" -u root -proot --silent; do
+          until docker exec mysql mysqladmin ping -h localhost -u root -proot --silent; do
             if [ $elapsed -ge $timeout ]; then
               echo "MySQL failed to start within $timeout seconds"
               docker logs mysql
               exit 1
             fi
             echo "MySQL not ready yet... (${elapsed}s/${timeout}s)"
-            sleep 2
-            elapsed=$((elapsed + 2))
+            sleep 3
+            elapsed=$((elapsed + 3))
           done
-          echo "MySQL is ready!"
+          
+          # Additional wait for full initialization
+          echo "MySQL is responding, waiting for full initialization..."
+          sleep 10
 
-      - name: Wait for MongoDB to be ready
+      - name: Test connection with Python before running tests
         run: |
-          echo "Waiting for MongoDB service..."
-          timeout=60
-          elapsed=0
-          until docker exec mongo mongosh --eval "db.adminCommand('ping')" --quiet; do
-            if [ $elapsed -ge $timeout ]; then
-              echo "MongoDB failed to start within $timeout seconds"
-              docker logs mongo
-              exit 1
-            fi
-            echo "MongoDB not ready yet... (${elapsed}s/${timeout}s)"
-            sleep 2
-            elapsed=$((elapsed + 2))
-          done
-          echo "MongoDB is ready!"
+          echo "Testing Python MySQL connection..."
+          python3 -c "
+          import mysql.connector
+          import time
+          
+          max_retries = 5
+          for attempt in range(max_retries):
+              try:
+                  print(f'Connection attempt {attempt + 1}/{max_retries}')
+                  conn = mysql.connector.connect(
+                      host='localhost',
+                      port=3306,
+                      user='user', 
+                      password='pass',
+                      database='mydb',
+                      connection_timeout=10,
+                      autocommit=True
+                  )
+                  cursor = conn.cursor()
+                  cursor.execute('SELECT 1')
+                  result = cursor.fetchone()
+                  print(f'✓ Connection successful! Test result: {result}')
+                  cursor.close()
+                  conn.close()
+                  break
+              except Exception as e:
+                  print(f'✗ Connection attempt {attempt + 1} failed: {e}')
+                  if attempt < max_retries - 1:
+                      print('Retrying in 5 seconds...')
+                      time.sleep(5)
+                  else:
+                      print('All connection attempts failed!')
+                      raise
+          "
 
       - name: Run tests with verbose output
         working-directory: src
@@ -74,10 +97,6 @@ jobs:
         run: |
           echo "=== Docker Compose Logs ==="
           docker compose logs
-          echo "=== MySQL Logs ==="
-          docker logs mysql
-          echo "=== MongoDB Logs ==="
-          docker logs mongo
 
       - name: Cleanup
         if: always()
