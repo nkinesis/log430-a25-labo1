@@ -7,6 +7,6 @@ from views.user_view import UserView
 
 if __name__ == '__main__':
     print("===== LE MAGASIN DU COIN =====")
-    print("DEPLOY TEST")
+    print("DEPLOY TEST 2")
     main_menu = UserView()
     main_menu.show_options()
