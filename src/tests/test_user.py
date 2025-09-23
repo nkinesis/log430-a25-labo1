@@ -21,7 +21,7 @@ def test_user_update():
     corrected_email = 'babbage@example.com'
     user.id = assigned_id
     user.email = corrected_email
-
+    # test runner
     dao.update(user)
 
     user_list = dao.select_all()
