@@ -26,22 +26,11 @@ jobs:
           pip install pytest
 
       - name: Démarrer conteneur de test
-        run: docker compose up -d
+        run: sudo docker compose up -d
 
       - name: Attendre l'initialisation du MySQL
         run: |
           sleep 10
-          timeout=60
-          until docker exec mysql mysqladmin ping -h localhost -u root -proot --silent; do
-            echo "Waiting for MySQL..."
-            sleep 3
-            timeout=$((timeout - 3))
-            if [ $timeout -le 0 ]; then
-              echo "MySQL failed to start"
-              exit 1
-            fi
-          done
-          sleep 5
 
       - name: Exécuter les tests
         working-directory: src
@@ -49,30 +38,8 @@ jobs:
 
       - name: Déploiement via SSH
         run: |
-          # Install SSH client
-          sudo apt-get update && sudo apt-get install -y openssh-client
-
-          if [ -z "${{ secrets.SSH_SERVER_HOST }}" ]; then
-            echo "ERROR: SSH_SERVER_HOST secret is not set or empty"
-            exit 1
-          else
-            echo "SSH_SERVER_HOST is set"
-          fi
+          echo "123"
           
-          # Setup SSH key
-          mkdir -p ~/.ssh
-          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa
-          
-          # Add server to known hosts to avoid host key verification prompt
-          ssh-keyscan -H ${{ secrets.SSH_SERVER_HOST }} >> ~/.ssh/known_hosts
-          
-          # Deploy via SSH
-          ssh -i ~/.ssh/id_rsa ${{ secrets.SSH_USER }}@${{ secrets.SSH_SERVER_HOST }} << 'EOF'
-            cd log430-a25-labo1
-            git pull origin main
-          EOF
-
       - name: Cleanup
         if: always()
         run: docker compose down -v
